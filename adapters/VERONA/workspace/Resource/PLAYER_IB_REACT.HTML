@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CBA_IB Unit Player</title>
+    <link  rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/underscore@1.9.1/underscore-min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsonform@2.1.5/lib/jsonform.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js"></script>
+    <script>
+
+
+        let state = {
+            sessionId: "",
+            idx: 0,
+            udef: {}
+        }
+
+        function validateUrl(url){
+            let isValid = validate({"ibBaseUri": url}, {
+                "ibBaseUri": {
+                    url: {
+                        allowLocal: true
+                    }
+                }
+            });
+            if(validate.isDefined(isValid) && Array.isArray(isValid["ibBaseUri"])){
+                console.error(isValid["ibBaseUri"][0])
+                return false;
+            }
+            return true;
+        }
+
+        function setItemUri(baseUri, itemId, task){
+            if(!validateUrl(baseUri))
+                return;            
+            let src = baseUri + "/src/pages/emulatorPage.html?itemName="+itemId+"&taskName="+task;
+            $("#cbaframe").attr("src", src);
+        }
+
+        const send = (messageType, data) => {
+
+            const messages = {
+
+                "ChangedDataTransfer": (values) => {
+                    return {
+                        type: 'vo.FromPlayer.ChangedDataTransfer',
+                        sessionId: state.sessionId,
+                        response: values,
+                        responseType: 'JSON',
+                        responseComplete: true,
+                        presentationComplete: 'yes',
+                        responsesGiven: 'all'
+                    }
+                },
+
+                "ReadyNotification": () => {
+                    return {
+                        'type': 'vo.FromPlayer.ReadyNotification',
+                        'version': 1
+                    }
+                },
+
+                "UnitNavigationRequest": (target) => {
+                    return {
+                        type: 'vo.FromPlayer.UnitNavigationRequest',
+                        sessionId: state.sessionId,
+                        navigationTarget: target
+                    }
+                }
+            };
+			
+			console.log("send", messageType, data, messages[messageType](data));
+
+            window.parent.postMessage(messages[messageType](data), '*')
+        };
+
+        const receive = (type, data) => {
+
+            console.log("receive", type, data);
+            console.log(jQuery, $);
+            
+            const callbacks = {
+
+                "vo.ToPlayer.EE4CBACommand": (data) => {
+                    console.log("vo.ToPlayer.EE4CBACommand", data);
+                    if(!data.params)
+                        return;
+
+                    let targetMap = {
+                        "back": "#previous"
+                    };
+                    let target = "#next";
+
+                    if(data.params.length > 0){
+                        if(targetMap[data.params[0]])
+                            target = targetMap[data.params[0]];
+
+                        if(Array.isArray(state.udef["tasks"])){
+                            if(target == "#next"){
+                                if(state.idx < (state.udef["tasks"].length-1)){
+                                    setItemUri(state.udef["base-uri"], state.udef["item-name"], state.udef["tasks"][++state.idx]);
+                                    return;
+                                }
+                            }
+                            else if(target == "#previous"){
+                                if(state.idx > 0){
+                                    setItemUri(state.udef["base-uri"], state.udef["item-name"], state.udef["tasks"][--state.idx]);
+                                    return;
+                                }
+                            }
+                        }
+                        send("UnitNavigationRequest", target);
+                    }
+                },
+
+                "vo.ToPlayer.DataTransfer": (data) => {
+                    
+                    console.log(data);
+
+                    let udef = JSON.parse(data.unitDefinition);
+                    let baseUri = udef["base-uri"] ? udef["base-uri"] : "";
+                    let itemId = udef["item-name"] ? udef["item-name"] : "";
+                    let task= "";
+                                        
+                    if(udef["tasks"]){
+                        task = udef["tasks"];
+                        if(Array.isArray(udef["tasks"])){
+                            task = udef["tasks"][0];
+                        }
+                    }
+
+                    console.log(udef);
+                    state.udef = udef,
+                    state.sessionId = data.sessionId;
+                    setItemUri(baseUri, itemId, task);
+                }                
+            };
+
+            if (typeof callbacks[type] !== 'undefined') {
+                callbacks[type](data);
+            }
+        };
+
+        // listen to messages from parent frame
+        window.addEventListener('message', event => {
+            console.log("message", event);
+            receive(event.data.type, event.data);
+        }, false);
+        // send ready notification if loaded
+        document.addEventListener("DOMContentLoaded", () => send("ReadyNotification"));
+
+    </script>
+</head>
+<body>
+
+<div>
+    <iframe src=""
+        style="width:1366px;height:768px;border:none;margin:0px;padding:0px;overflow:hidden;"
+        id="cbaframe">
+    </iframe>
+</div>
+
+
+</body>
+</html>

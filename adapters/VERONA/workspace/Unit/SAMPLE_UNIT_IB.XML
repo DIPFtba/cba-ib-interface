@@ -1,0 +1,36 @@
+<Unit
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/iqb-berlin/testcenter-iqb-php/1.3.1/vo_code/vo_Unit.xsd"
+>
+  <Metadata>
+    <Id>UNIT.SAMPLE_IB</Id>
+    <Label>An itembuilder sample unit</Label>
+    <Description>This is a sample unit illustrating the use of a cba itembuilder item within a VERONA test</Description>
+    <Owner>super</Owner>
+    <Lastchange>2019-10-27T13:37:00</Lastchange>
+    <Project>ib_interface</Project>
+  </Metadata>
+
+  <Definition player="PLAYER_IB_REACT">
+  
+  <!--	
+	
+	* item-name:
+	   => corresponds to the name given in <ib_interface_root>/content/<item-name>/<item-name>.json
+	
+	* base-uri: 
+	   => <ib_interface_root> location (absolute URL) of the interface root directory 
+	
+	* tasks:
+	   => subtasks / pages the item consists of  - either a string for a single task or an array of strings for multiple tasks e.g. ["task1", "task2"] ...
+
+  -->
+    {
+        "type": "ib_react",
+        "item-name": "ib_item",		
+        "base-uri": "https://<ib_interface_root>",
+        "tasks": "EntryTask"
+    }
+  </Definition>
+
+</Unit>
